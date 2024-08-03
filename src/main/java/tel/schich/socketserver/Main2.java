@@ -3,6 +3,7 @@ package tel.schich.socketserver;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -33,22 +34,34 @@ public class Main2 {
             final Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
             while (iterator.hasNext()) {
                 final SelectionKey key = iterator.next();
-                if (acceptKey == key) {
-                    final SocketChannel clientChannel = serverChannel.accept();
-                    clientChannel.configureBlocking(false);
-                    System.out.println("Accepted via selector: " + (i++));
-                    clientChannel.register(selector, SelectionKey.OP_READ);
-                } else {
-                    final SocketChannel channel = (SocketChannel) key.channel();
-                    if (channel.read(buffer) == -1) {
-                        channel.close();
-                        System.out.println("Disconnected: " + (--i));
+                try {
+                    if (acceptKey == key) {
+                        final SocketChannel clientChannel = serverChannel.accept();
+                        clientChannel.configureBlocking(false);
+                        System.out.println("Accepted via selector: " + (i++));
+                        clientChannel.register(selector, SelectionKey.OP_READ);
                     } else {
-                        buffer.clear();
+                        final SocketChannel channel = (SocketChannel) key.channel();
+                        final int bytesRead;
+                        try {
+                            bytesRead = channel.read(buffer);
+                        } catch (SocketException e) {
+                            channel.close();
+                            throw e;
+                        }
+                        if (bytesRead == -1) {
+                            channel.close();
+                            System.out.println("Disconnected: " + (--i));
+                        } else {
+                            buffer.clear();
 //                        System.out.println("Read with selector!");
+                        }
                     }
+                    iterator.remove();
+                } catch (IOException e) {
+                    System.err.println("Failed to perform IO operation!");
+                    e.printStackTrace(System.err);
                 }
-                iterator.remove();
             }
         }
     }
