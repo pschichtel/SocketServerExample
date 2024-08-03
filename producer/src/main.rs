@@ -44,7 +44,7 @@ fn main() -> ExitCode {
         let mut offset = 0;
         let mut remaining_bytes = buffer.len();
         while remaining_bytes > 0 {
-            match stream.write(&buffer[offset..remaining_bytes]) {
+            match stream.write(&buffer[offset..]) {
                 Ok(bytes_written) => {
                     offset += bytes_written;
                     remaining_bytes -= bytes_written;
